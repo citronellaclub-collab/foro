@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Foro Académico</title>
+
+<style>
+.foro-app {
+  font-family: system-ui, sans-serif;
+  background: #0f1115;
+  color: #e5e7eb;
+  min-height: 100vh;
+}
+
+.foro-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.foro-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+}
+
+.foro-sidebar {
+  border-right: 1px solid #1f2937;
+  padding: 16px;
+}
+
+.foro-sidebar button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: transparent;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.foro-sidebar button:hover {
+  background: #1f2937;
+}
+
+.foro-main {
+  padding: 24px;
+}
+
+.foro-form {
+  border: 1px solid #1f2937;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background: #111827;
+}
+
+.foro-form input,
+.foro-form textarea,
+.foro-form select {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: #0f1115;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+  border-radius: 6px;
+}
+
+.foro-form button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.foro-post {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.foro-meta {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.foro-post iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 10px;
+  border-radius: 6px;
+}
+
+.foro-post a {
+  color: #60a5fa;
+}
+
+.foro-actions {
+  margin-top: 10px;
+}
+
+.foro-actions button {
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="foro-app">
+
+<header class="foro-header">
+  <h1>📘 Foro Académico</h1>
+</header>
+
+<div class="foro-layout">
+
+  <aside class="foro-sidebar">
+    <button onclick="filtrar('Descubrimientos')">🔬 Descubrimientos</button>
+    <button onclick="filtrar('Investigaciones')">📄 Investigaciones</button>
+    <button onclick="filtrar('Clases')">🎓 Clases</button>
+    <button onclick="filtrar('Multimedia')">🎥 Multimedia</button>
+    <button onclick="filtrar('Todos')">📚 Todos</button>
+  </aside>
+
+  <main class="foro-main">
+
+    <!-- FORMULARIO -->
+    <div class="foro-form">
+      <select id="categoria">
+        <option>Descubrimientos</option>
+        <option>Investigaciones</option>
+        <option>Clases</option>
+        <option>Multimedia</option>
+      </select>
+
+      <input id="titulo" placeholder="Título del contenido">
+      <textarea id="contenido" placeholder="Descripción / tema de discusión"></textarea>
+      <input id="youtube" placeholder="Link de YouTube (opcional)">
+      <input type="file" id="archivo">
+      <button onclick="crearPost()">Publicar</button>
+    </div>
+
+    <!-- POSTS -->
+    <div id="feed"></div>
+
+  </main>
+
+</div>
+</div>
+
+<script>
+let posts = JSON.parse(localStorage.getItem("foro_posts")) || [];
+let filtroActual = "Todos";
+
+function crearPost() {
+  const titulo = document.getElementById("titulo").value;
+  const contenido = document.getElementById("contenido").value;
+  const categoria = document.getElementById("categoria").value;
+  const youtube = document.getElementById("youtube").value;
+  const archivo = document.getElementById("archivo").files[0];
+
+  if (!titulo || !contenido) return alert("Completa título y contenido");
+
+  const post = {
+    id: Date.now(),
+    titulo,
+    contenido,
+    categoria,
+    youtube,
+    archivo: archivo ? archivo.name : null,
+    fecha: new Date().toLocaleDateString()
+  };
+
+  posts.unshift(post);
+  guardar();
+  render();
+  limpiarForm();
+}
+
+function render() {
+  const feed = document.getElementById("feed");
+  feed.innerHTML = "";
+
+  posts
+    .filter(p => filtroActual === "Todos" || p.categoria === filtroActual)
+    .forEach(p => {
+      feed.innerHTML += `
+      <article class="foro-post">
+        <h3>${p.titulo}</h3>
+        <div class="foro-meta">${p.categoria} · ${p.fecha}</div>
+        <p>${p.contenido}</p>
+        ${p.youtube ? `<iframe src="https://www.youtube.com/embed/${extraerID(p.youtube)}"></iframe>` : ""}
+        ${p.archivo ? `<p>📎 Archivo: ${p.archivo}</p>` : ""}
+        <div class="foro-actions">
+          <button onclick="eliminar(${p.id})">🗑 Eliminar</button>
+        </div>
+      </article>`;
+    });
+}
+
+function filtrar(cat) {
+  filtroActual = cat;
+  render();
+}
+
+function eliminar(id) {
+  if (!confirm("¿Eliminar contenido?")) return;
+  posts = posts.filter(p => p.id !== id);
+  guardar();
+  render();
+}
+
+function guardar() {
+  localStorage.setItem("foro_posts", JSON.stringify(posts));
+}
+
+function limpiarForm() {
+  document.getElementById("titulo").value = "";
+  document.getElementById("contenido").value = "";
+  document.getElementById("youtube").value = "";
+  document.getElementById("archivo").value = "";
+}
+
+function extraerID(url) {
+  return url.split("v=")[1]?.split("&")[0] || "";
+}
+
+render();
+</script>
+
+</body>
+</html>
+
+
+
